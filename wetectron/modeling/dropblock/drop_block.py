@@ -4,59 +4,6 @@ import math
 from torch import nn
 import numpy as np
 
-class Attention_DropBlock(nn.Module):
-    def __init__(self, prob, size):
-        super(Attention_DropBlock, self).__init__()
-        self.drop_prob = prob
-        self.block_size = size
-
-    def forward(self, x, proposals):
-        # shape: (bsize, channels, height, width)
-        assert x.dim() == 4, \
-            "Expected input with 4 dimensions (bsize, channels, height, width)"
-        #batch_size = x.shape[0]
-        #atten_map = x.mean(1).detach().cpu()
-
-        '''
-        s_map = torch.sigmoid(x.mean(1))
-        c_map = torch.sigmoid(x.mean(3).mean(2))
-        import IPython; IPython.embed()
-        return x * (1-s_map[:,None,:,:]) * (1-c_map[:,:,None,None]) ### both
-        #return x * (1-s_map[:,None,:,:])                            ### spatial_attention
-        #return x * (1-c_map[:,:,None,None])                         ### channel_attention
-        '''
-
-
-        atten_map = x.mean(1).detach().cpu()
-        per_atten_map = atten_map.split([len(p) for p in proposals])
-
-        num_k = [round(per_att_map.flatten(0).shape[0] * (1-(self.drop_prob/100))) for per_att_map in per_atten_map]
-        val_k = [per_att_map.flatten(0).topk(k)[0][-1] for (per_att_map, k) in zip(per_atten_map, num_k)]
-        blocks = [torch.where(per_att_map > v_k, 1.0, 0.0) for (per_att_map, v_k) in zip(per_atten_map, val_k)]
-
-        block_mask = torch.zeros((0), dtype=torch.float, device=x.device)
-        for b in blocks:
-            block_mask = torch.cat((block_mask, b.to(x.device)))
-        out = x * block_mask[:, None, :, :]
-        out = out * block_mask.numel() / block_mask.sum()
-        #import IPython; IPython.embed()
-        return out
-
-        #mask = torch.where(torch.eq(atten_map, mask_threshold.repeat(7,7,1).permute(-1,0,1)), 1.0, 0.0)
-
-    def _compute_block_mask(self, mask):
-        block_mask = F.max_pool2d(input=mask[:, None, :, :],
-                                  kernel_size=(self.block_size, self.block_size),
-                                  stride=(1, 1),
-                                  padding=self.block_size // 2)
-
-        if self.block_size % 2 == 0:
-            block_mask = block_mask[:, :, :-1, :-1]
-
-        block_mask = 1 - block_mask.squeeze(1)
-
-        return block_mask
-
 class DropBlock2D(nn.Module):
     r"""Randomly zeroes 2D spatial blocks of the input tensor.
     As described in the paper

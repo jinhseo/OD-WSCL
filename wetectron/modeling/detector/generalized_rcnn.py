@@ -18,7 +18,6 @@ from ..roi_heads.roi_heads import build_roi_heads
 import torchvision.transforms.functional as T_F
 from ..roi_heads.box_head.roi_box_feature_extractors import make_roi_box_feature_extractor
 import torchvision.models as models
-from ..backbone.resnet_v1 import ResNet, resnetv1
 from ..cam.cam import Compute_Cam_Loss
 
 class GeneralizedRCNN(nn.Module):
@@ -35,34 +34,11 @@ class GeneralizedRCNN(nn.Module):
         super(GeneralizedRCNN, self).__init__()
         self.backbone = build_backbone(cfg)
         ### adjust stride for R50-C5 combination###
-        if 'R-50-C5' in cfg.MODEL.BACKBONE['CONV_BODY']:
-            #self.backbone[0].layer2[0].downsample[0].stride = (1,1)
-            #self.backbone[0].layer2[0].conv1.stride = (1,1)
-            #self.backbone[0].layer3[0].downsample[0].stride = (1,1)
-            #self.backbone[0].layer3[0].conv1.stride = (1,1)
 
-            '''self.backbone[0].layer1 = nn.Sequential(*[self.backbone[0].layer1, nn.MaxPool2d(kernel_size=2, stride=2, padding=0)])
-            self.backbone[0].layer2 = nn.Sequential(*[self.backbone[0].layer2, nn.MaxPool2d(kernel_size=2, stride=1, padding=0)])
-            for blocks in range(6):
-                self.backbone[0].layer3[blocks].conv2.padding = (2,2)
-                self.backbone[0].layer3[blocks].conv2.dilation = (2,2)
-            for blocks in range(3):
-                self.backbone[0].layer4[blocks].conv2.padding = (2,2)
-                self.backbone[0].layer4[blocks].conv2.dilation = (2,2)
-            self.backbone[0].layer2[0][0].downsample[0].stride = (1,1)
-            self.backbone[0].layer2[0][0].conv1.stride = (1,1)
-            self.backbone[0].layer3[0].downsample[0].stride = (1,1)
-            self.backbone[0].layer3[0].conv1.stride = (1,1)
-            self.backbone[0].layer4[0].downsample[0].stride = (1,1)
-            self.backbone[0].layer4[0].conv1.stride = (1,1)
-            '''
-            #self.backbone[0].layer3[0].downsample[0].stride = (1,1)
-            #self.backbone[0].layer3[0].conv1.stride = (1,1)
+        if 'R-50-C5' in cfg.MODEL.BACKBONE['CONV_BODY']:
             self.backbone[0].layer4[0].downsample[0].stride = (1,1)
             self.backbone[0].layer4[0].conv1.stride = (1,1)
         elif 'R-101-C5' in cfg.MODEL.BACKBONE['CONV_BODY']:
-            #self.backbone[0].layer3[0].downsample[0].stride = (1,1)
-            #self.backbone[0].layer3[0].conv1.stride = (1,1)
             self.backbone[0].layer4[0].downsample[0].stride = (1,1)
             self.backbone[0].layer4[0].conv1.stride = (1,1)
         elif 'R-18-C5' in cfg.MODEL.BACKBONE['CONV_BODY']:
@@ -76,10 +52,6 @@ class GeneralizedRCNN(nn.Module):
             self.use_rpn = False
 
         self.use_cam = False
-        #if self.training and cfg.DB.METHOD == 'sequence':
-        #    self.use_cam = True
-        #    self.cam = Compute_Cam_Loss(cfg, self.backbone.out_channels)
-
         self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)
 
 

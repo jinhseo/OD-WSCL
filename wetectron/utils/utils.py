@@ -15,30 +15,6 @@ from wetectron.modeling.matcher import Matcher
 from wetectron.data.datasets.evaluation.voc.voc_eval import calc_detection_voc_prec_rec
 
 @torch.no_grad()
-def clustering(proposal, close, n_cluster=5, c_iou=0.5):
-    box = BoxList(proposal.bbox[close], proposal.size, proposal.mode)
-    cluster = close[torch.where(torch.nonzero(torch.ge(boxlist_iou(box,box), c_iou))[:,0].unique(return_counts=True)[1] > n_cluster)[0]]
-    return cluster
-
-def grouping(proposal, close, score, iou=0.5):
-    box = BoxList(proposal.bbox[close], proposal.size, proposal.mode)
-    group = torch.zeros((0), dtype=torch.int64, device=close.device)
-    for i_iou in boxlist_iou(box, box):
-        h_iou_ind = torch.ge(i_iou, 0.5).nonzero(as_tuple=False).view(-1)
-        h_iou_box = box[torch.ge(i_iou, 0.5).nonzero(as_tuple=False).view(-1)]
-        group = torch.cat((group, h_iou_ind[h_iou_box.area().argmax().view(-1)])).unique()
-    group_box = proposal[close[group]]
-    group_box.add_field('scores',score[close[group]])
-    group_box = boxlist_nms(group_box, 0.3)
-    import IPython; IPython.embed()
-    return group
-@torch.no_grad()
-def easy_cluster(p, cos_close, n_cluster=5, c_iou=0.5):
-    box = BoxList(p.bbox[cos_close], p.size, p.mode)
-    cluster = cos_close[torch.where(torch.nonzero(torch.ge(boxlist_iou(box, box), c_iou))[:,0].unique(return_counts=True)[1] > n_cluster)[0]]
-    return cluster
-
-@torch.no_grad()
 def to_boxlist(proposal, index):
     boxlist = BoxList(proposal.bbox[index], proposal.size, proposal.mode)
     return boxlist
@@ -48,21 +24,6 @@ def cal_iou(proposal, target_index, iou_thres=1e-5):
     iou_index = torch.nonzero(torch.ge(boxlist_iou(proposal, to_boxlist(proposal, target_index.view(-1))), iou_thres).max(dim=1)[0]).view(-1)
     iou_score = boxlist_iou(proposal, to_boxlist(proposal, target_index.view(-1)))[iou_index]
     return iou_index, iou_score
-
-@torch.no_grad()
-def no_iou(proposal, target_index):
-    iou_index = torch.nonzero(torch.all(torch.lt(boxlist_iou(proposal, to_boxlist(proposal, target_index.view(-1))), 1e-5),dim=1))
-    return iou_index
-
-@torch.no_grad()
-def one_line_nms(proposals, b1_cluster, b2_cluster, source_score, p_size, duplicate, nms_iou=0.1):
-    b1_cluster_box = BoxList(proposals[0].bbox[b1_cluster], proposals[0].size, proposals[0].mode)
-    b2_cluster_box = BoxList(proposals[1].bbox[b2_cluster], proposals[1].size, proposals[1].mode)
-    b1_cluster_box.add_field('scores', source_score[:p_size][b1_cluster,duplicate])
-    b2_cluster_box.add_field('scores', source_score[p_size:][b2_cluster,duplicate])
-    b1_cluster_nms = b1_cluster[boxlist_nms_index(b1_cluster_box, nms_iou)[1]]
-    b2_cluster_nms = b2_cluster[boxlist_nms_index(b2_cluster_box, nms_iou)[1]]
-    return b1_cluster_nms, b2_cluster_nms
 
 @torch.no_grad()
 def easy_nms(proposals, cluster, source_score, nms_iou=0.1):

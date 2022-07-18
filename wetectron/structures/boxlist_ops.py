@@ -122,49 +122,6 @@ def remove_small_area(boxlist, min_area):#, max_area, min_size):
     keep = torch.stack(torch.where(keep > 0), dim=1).squeeze(1)
     return boxlist[keep], keep
 
-@torch.no_grad()
-def remove_inside_box(proposals, box_index, box_score):
-    keep_boxes = torch.zeros((0), dtype=torch.long, device='cuda')
-    sim_box = BoxList(proposals.bbox[box_index], proposals.size, proposals.mode)
-    sim_box.add_field('scores', box_score[box_index])
-    score_order = sim_box.get_field('scores').sort(descending=True)[1]
-
-    non_keep_inds = torch.zeros((0), dtype=torch.long, device='cuda')
-    for ind, i_th_iou in enumerate(boxlist_iou(sim_box[score_order], sim_box)):
-        i_th_group = box_index[score_order[torch.ge(i_th_iou, 0.1).nonzero(as_tuple=False)]]
-        i_th_area = sim_box[score_order].area()
-        keep_boxlist, keep_ind = remove_small_area(sim_box[i_th_group.view(-1)],sim_box[score_order].area()[ind])
-        non_keep_ind = i_th_group[torch.where(torch.cat((i_th_group, i_th_group[keep_ind])).unique(return_counts=True)[1] == 1)[0].view(-1)]
-        import IPython; IPython.embed()
-        non_keep_inds = torch.cat((non_keep_inds, non_keep_ind))
-    import IPython; IPython.embed()
-    x1, y1, x2, y2 = sim_box.bbox.unbind(dim=1)
-
-    score_order = sim_box.get_field('scores').sort(descending=True)[1]
-    for i, (x11, y11, x22, y22) in enumerate(zip(x1[score_order], y1[score_order], x2[score_order], y2[score_order])):
-        keep = (x1 < x11) & (y1 < y11) & (x2 > x22) & (y2 > y22)
-        keep_boxes = torch.cat((keep_boxes, keep.nonzero(as_tuple=False).view(-1)))
-        #small_boxes = torch.cat((small_boxes, torch.where(inside > 0)[0])).unique()
-        import IPython; IPython.embed()
-    keep = torch.where(torch.cat((box_index, box_index[keep_boxes])).unique(return_counts=True)[1] == 1)[0]
-    import IPython; IPython.embed()
-    return box_index[keep]
-    #return boxlist[keep]
-
-def remove_inside_boxlist(boxlist, h_score_boxlist):
-    outside_boxes = []
-    h_x1, h_y1, h_x2, h_y2 = h_score_boxlist.bbox[0]
-    x1, y1, x2, y2 = boxlist.bbox.unbind(dim=1)
-    for i, (x11, y11, x22, y22) in enumerate(zip(x1, y1, x2, y2)):
-        inside = (x11 > h_x1) & (y11 > h_y1) & (x22 < h_x2) & (y22 < h_y2)
-        if not inside:
-            outside_boxes.append(i)
-
-    h_overlaps_boxlist = boxlist[torch.ge(boxlist_iou(boxlist, h_score_boxlist), 1e-5).view(-1)]
-    keep_boxlist, keep_ind = remove_small_area(h_overlaps_boxlist,h_score_boxlist.area())
-    return keep_boxlist, keep_ind
-    #return boxlist[outside_boxes]
-
 # implementation from https://github.com/kuangliu/torchcv/blob/master/torchcv/utils/box.py
 # with slight modifications
 def boxlist_iou(boxlist1, boxlist2):

@@ -44,4 +44,4 @@ configs/voc_ignore
 
 # slurm out
 *.out
-*.yaml
+#*.yaml

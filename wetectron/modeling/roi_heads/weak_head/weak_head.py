@@ -18,7 +18,7 @@ from .roi_sampler import make_roi_sampler
 
 from wetectron.modeling.utils import cat
 from wetectron.structures.boxlist_ops import cat_boxlist
-from wetectron.modeling.roi_heads.triplet_head.triplet_net import Sim_Net
+from wetectron.modeling.roi_heads.sim_head.sim_net import Sim_Net
 
 class ROIWeakHead(torch.nn.Module):
     """
@@ -84,7 +84,7 @@ class ROIWeakRegHead(torch.nn.Module):
         self.DB_METHOD = cfg.DB.METHOD
         self.model_sim = Sim_Net(cfg, self.feature_extractor.out_channels)
 
-    def go_through_cdb(self, features, proposals, aug_method, model_cdb):
+    def go_through_cdb(self, features, proposals, model_cdb):
         if not self.training or self.DB_METHOD == "none":
             return self.feature_extractor(features, proposals)
         elif self.DB_METHOD == "concrete":
@@ -93,12 +93,6 @@ class ROIWeakRegHead(torch.nn.Module):
             return self.feature_extractor.forward_neck(x), pooled_feats
         elif self.DB_METHOD == "dropblock":
             return self.feature_extractor.forward_dropblock(features, proposals)
-            #if aug_method == "D":
-            #    return self.feature_extractor.forward_dropblock(features, proposals)
-            #elif aug_method == "N":
-            #    return self.feature_extractor.forward_
-        elif self.DB_METHOD == "attention":
-            return self.feature_extractor.forward_attention_dropblock(features, proposals)
         else:
             raise ValueError
 
@@ -107,33 +101,15 @@ class ROIWeakRegHead(torch.nn.Module):
         if self.roi_sampler is not None and self.training:
             with torch.no_grad():
                 proposals = self.roi_sampler(proposals, targets)
-        '''
-        if self.training and self.DB_METHOD != "none":
-            roi_feats, pooled_feats = self.go_through_cdb(features, proposals, aug_method, model_cdb)
-            roi_feats_for_sim = self.feature_extractor.forward_neck(pooled_feats)
-            sim_feature = self.model_sim(roi_feats_for_sim)
-            #sim_feature = self.model_sim(pooled_feats)
-        elif self.DB_METHOD == "none":
-            roi_feats, pooled_feats = self.go_through_cdb(features, proposals, model_cdb)
-            sim_feature = self.model_sim(roi_feats)
-        elif not self.training:
-            roi_feats, pooled_feats = self.go_through_cdb(features, proposals, model_cdb)
-        '''
 
         clean_roi_feats, clean_pooled_feats = self.feature_extractor.forward(features, proposals)
-        #sim_feature = self.model_sim(clean_roi_feats)
-        #sim_feature = self.model_sim(clean_pooled_feats)
 
         if self.training:
             sim_feature = self.model_sim(clean_roi_feats)
-            #sim_feature = self.model_sim(clean_pooled_feats)
-
-            #pooled_feats = self.feature_extractor.forward_pooler(features, proposals)
-            #aug_pooled_feats = model_cdb(pooled_feats)
-            aug_pooled_feats = self.feature_extractor.forward_dropblock(clean_pooled_feats)
-
+            #aug_pooled_feats = self.feature_extractor.forward_dropblock(clean_pooled_feats)
+            aug_pooled_feats = self.go_through_cdb(clean_pooled_feats, proposals, model_cdb=model_cdb)
             aug_roi_feats = self.feature_extractor.forward_neck(aug_pooled_feats)
-            #sim_feature = self.model_sim(aug_roi_feats)
+
             cls_score, det_score, ref_scores, ref_bbox_preds = self.predictor(aug_roi_feats, proposals)
 
         if not self.training:
@@ -141,7 +117,7 @@ class ROIWeakRegHead(torch.nn.Module):
             result = self.testing_forward(cls_score, det_score, proposals, ref_scores, ref_bbox_preds)
             return clean_roi_feats, result, {}, {}
 
-        loss_img, accuracy_img = self.loss_evaluator([cls_score], [det_score], ref_scores, ref_bbox_preds, sim_feature, clean_pooled_feats, self.feature_extractor, self.model_sim, self.predictor, proposals, targets, iteration=iteration)
+        loss_img, accuracy_img = self.loss_evaluator([cls_score], [det_score], ref_scores, ref_bbox_preds, sim_feature, clean_pooled_feats, self.feature_extractor, self.model_sim, proposals, targets)
 
         return (aug_roi_feats, proposals, loss_img, accuracy_img)
 

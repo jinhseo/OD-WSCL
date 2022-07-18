@@ -14,15 +14,13 @@ from wetectron.layers import smooth_l1_loss
 from wetectron.modeling import registry
 from wetectron.modeling.utils import cat
 from wetectron.config import cfg
-from wetectron.structures.boxlist_ops import boxlist_iou, boxlist_ioa, boxlist_iou_async, boxlist_nms_index
+from wetectron.structures.boxlist_ops import boxlist_iou, boxlist_iou_async, boxlist_nms_index
 from wetectron.structures.bounding_box import BoxList
 from wetectron.modeling.matcher import Matcher
-from wetectron.utils.utils import clustering, grouping, to_boxlist, no_iou, cal_iou, one_line_nms, easy_nms, cos_sim, get_share_class, generate_img_label, temp_softmax, th_delete, cal_precision_recall
-from .pseudo_label_generator import oicr_layer, mist_layer, cbs_layer, mist_cbs_layer, sim_layer
-from wetectron.modeling.roi_heads.weak_head.sampling import get_max_index, close_sampling, neg_sampling, mist_sampling
-from wetectron.modeling.roi_heads.triplet_head.triplet_loss import Triplet_Loss, Contra_Loss, N_pair_Loss, Supcon_Loss, SupConLossV2
-from wetectron.modeling.roi_heads.triplet_head.triplet_net import Sim_Net
-import torchvision.transforms.functional as T_F
+from wetectron.utils.utils import to_boxlist, cal_iou, easy_nms, cos_sim, get_share_class, generate_img_label
+from .pseudo_label_generator import oicr_layer, mist_layer, od_layer
+from wetectron.modeling.roi_heads.sim_head.sim_loss import Supcon_Loss, SupConLossV2
+from wetectron.modeling.roi_heads.sim_head.sim_net import Sim_Net
 
 def compute_avg_img_accuracy(labels_per_im, score_per_im, num_classes):
     """
@@ -176,15 +174,13 @@ class RoIRegLossComputation(object):
     """ Generic roi-level loss """
     def __init__(self, cfg):
         self.refine_p = cfg.MODEL.ROI_WEAK_HEAD.OICR_P
-
         self.contra = cfg.SOLVER.CONTRA
 
         if self.refine_p > 0 and self.refine_p < 1 and not self.contra:
             self.mist_layer = mist_layer(self.refine_p)
-        if self.refine_p > 0 and self.refine_p < 1 and self.contra:
-            self.mist_cbs_layer = mist_cbs_layer(self.refine_p)
         self.oicr_layer = oicr_layer()
-        self.sim_layer = sim_layer()
+        self.od_layer = od_layer()
+
         # for regression
         self.cls_agnostic_bbox_reg = cfg.MODEL.CLS_AGNOSTIC_BBOX_REG
         # for partial labels
@@ -195,29 +191,19 @@ class RoIRegLossComputation(object):
             0.5, 0.5, allow_low_quality_matches=False,
         )
 
-        self.cluster = cfg.cluster
         self.nms = cfg.nms
         self.sim_lmda = cfg.lmda
         self.pos_update = cfg.pos_update
         self.p_thres = cfg.thres
         self.p_iou = cfg.iou
         self.max_iter = cfg.SOLVER.MAX_ITER
+
         self.temp = cfg.temp
-        if cfg.loss == 'triplet':
-            self.sim_loss = Triplet_Loss()
-        if cfg.loss == 'contra':
-            self.sim_loss = Contra_Loss()
-        elif cfg.loss == 'npair':
-            self.sim_loss = N_pair_Loss()
-        elif cfg.loss == 'supcon':
+        if cfg.loss == 'supcon':
             self.sim_loss = Supcon_Loss(self.temp)
         elif cfg.loss == 'supconv2':
             self.sim_loss = SupConLossV2(self.temp)
         self.output_dir = cfg.OUTPUT_DIR
-        self.cls_hp = cfg.cls_hp
-        self.reg_hp = cfg.reg_hp
-        self.c_lmda = cfg.lmda2
-        #self.l1_loss = nn.L1Loss()
 
     def filter_pseudo_labels(self, pseudo_labels, proposal, target):
         """ refine pseudo labels according to partial labels """
@@ -244,9 +230,7 @@ class RoIRegLossComputation(object):
 
         return pseudo_labels
 
-    def __call__(self, class_score, det_score, ref_scores, ref_bbox_preds, sim_feature, clean_pooled_feats, feature_extractor, model_sim, predictor, proposals, targets, iteration=None, epsilon=1e-8):
-        iter_dict = iteration
-
+    def __call__(self, class_score, det_score, ref_scores, ref_bbox_preds, sim_feature, clean_pooled_feats, feature_extractor, model_sim, proposals, targets, epsilon=1e-8):
         class_score = F.softmax(cat(class_score, dim=0), dim=1)
         class_score_list = class_score.split([len(p) for p in proposals])
 
@@ -307,119 +291,55 @@ class RoIRegLossComputation(object):
                     iou_samples = pgt_index[idx][pos_c]
                     pgt_update[pos_c] = torch.cat((pgt_update[pos_c], sim_feature[idx][iou_samples])) ### iou sampling
 
-                    if iteration['iter'] < 0:
-                        hardness = torch.ones_like(iou_samples) * 0.00001
-                    else:
-                        hardness = final_score_list[idx][iou_samples, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
-                        #hardness = avg_score_split[idx][iou_samples, pos_c+1]
-                        #hardness = avg_score_split[idx][iou_samples, pos_c+1] / avg_score_split[idx][:, pos_c+1].sum()
-                        #hardness = F.softmax(avg_score_split[idx][:, pos_c+1], dim=0)[iou_samples]
-                        #hardness = (avg_score_split[idx][:, pos_c+1] / torch.matmul(avg_score_split[idx][:,pos_c+1], (1-boxlist_iou(proposals_per_image, proposals_per_image))))[iou_samples]
-                        #alpha = (iteration['iter']/30000) ** (2)
-                        #hardness = torch.ones_like(iou_samples) * 0.1
+                    hardness = final_score_list[idx][iou_samples, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
 
                     instance_diff = torch.cat((instance_diff, hardness))
                     drop_logit = feature_extractor.forward_neck(feature_extractor.drop_pool(clean_pooled_feat[idx][iou_samples]))
                     pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(drop_logit) ))
-                    #drop_hardness = torch.softmax(torch.stack(predictor.forward_ref(drop_logit)),2).mean(0)[:,pos_c+1]
                     instance_diff = torch.cat((instance_diff, hardness))
 
                     noise_logit = feature_extractor.forward_neck(feature_extractor.noise_pool(clean_pooled_feat[idx][iou_samples]))
                     pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(noise_logit) ))
-                    #noise_hardness = torch.softmax(torch.stack(predictor.forward_ref(noise_logit)),2).mean(0)[:,pos_c+1]
                     instance_diff = torch.cat((instance_diff, hardness))
-
-                    '''
-                    content_logit = feature_extractor.forward_neck(feature_extractor.content_pool(clean_pooled_feat[idx][iou_samples]))
-                    pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(content_logit) ))
-                    content_hardness = torch.softmax(torch.stack(predictor.forward_ref(content_logit)),2).mean(0)[:,pos_c+1]
-                    instance_diff = torch.cat((instance_diff, content_hardness))
-                    '''
-                    #flip_logit = feature_extractor.forward_neck(feature_extractor.flip_pool(clean_pooled_feat[idx][iou_samples]))
-                    #pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(flip_logit) ))
-                    #flip_hardness = torch.softmax(torch.stack(predictor.forward_ref(flip_logit)),2).mean(0)[:,pos_c+1]
-                    #instance_diff = torch.cat((instance_diff, hardness))
 
                     pgt_collection[pos_c] = pgt_update[pos_c].clone()
 
             pgt_instance = [[[torch.zeros((0), dtype=torch.long, device=device) for x in range(num_classes-1)] for z in range(num_refs)] for y in range(len(targets))]
-            if True:
-                for idx, (final_score_per_im, pos_classes_per_im, proposals_per_image) in enumerate(zip(final_score_list, pos_classes, proposals)):
-                    for i in range(num_refs):
-                        source_score = final_score_per_im if i == 0 else F.softmax(ref_scores[i-1][idx], dim=1)
-                        proposal_score = source_score[:, 1:].clone()
 
-                        for pos_c in pos_classes_per_im:
-                            max_index = torch.argmax(proposal_score[:,pos_c])
+            for idx, (final_score_per_im, pos_classes_per_im, proposals_per_image) in enumerate(zip(final_score_list, pos_classes, proposals)):
+                for i in range(num_refs):
+                    source_score = final_score_per_im if i == 0 else F.softmax(ref_scores[i-1][idx], dim=1)
+                    proposal_score = source_score[:, 1:].clone()
 
-                            sim_mat = torch.mm(sim_feature[idx], sim_feature[idx].T)
-                            sim_thresh = torch.mm(sim_feature[idx][max_index].view(1,-1), pgt_collection[pos_c].T).mean()
+                    for pos_c in pos_classes_per_im:
+                        max_index = torch.argmax(proposal_score[:,pos_c])
 
-                            if pos_classes_per_im.shape[0] > 1:
-                                neg_classes = pos_classes_per_im[(pos_classes_per_im != pos_c)]
-                                sim_close = torch.ge(sim_mat[max_index], sim_thresh)
-                                for neg_c in neg_classes:
-                                    neg_max_index = torch.argmax(proposal_score[:,neg_c])
-                                    sim_close = torch.ge(sim_close, sim_mat[neg_max_index])
-                                sim_close = sim_close.nonzero(as_tuple=False).view(-1)
-                            else:
-                                sim_close = torch.ge(sim_mat[max_index], sim_thresh).nonzero(as_tuple=False).view(-1)
+                        sim_mat = torch.mm(sim_feature[idx], sim_feature[idx].T)
+                        sim_thresh = torch.mm(sim_feature[idx][max_index].view(1,-1), pgt_collection[pos_c].T).mean()
 
-                            sim_close = easy_nms(proposals_per_image, sim_close, proposal_score[:,pos_c], nms_iou=self.nms)      ### operate nms
-                            sim_close = torch.cat((sim_close, max_index.view(-1))) if sim_close.nelement() == 0 else sim_close   ### avoid none
-                            pgt_instance[idx][i][pos_c] = torch.cat((pgt_instance[idx][i][pos_c], sim_close))
+                        if pos_classes_per_im.shape[0] > 1:
+                            neg_classes = pos_classes_per_im[(pos_classes_per_im != pos_c)]
+                            sim_close = torch.ge(sim_mat[max_index], sim_thresh)
+                            for neg_c in neg_classes:
+                                neg_max_index = torch.argmax(proposal_score[:,neg_c])
+                                sim_close = torch.ge(sim_close, sim_mat[neg_max_index])
+                            sim_close = sim_close.nonzero(as_tuple=False).view(-1)
+                        else:
+                            sim_close = torch.ge(sim_mat[max_index], sim_thresh).nonzero(as_tuple=False).view(-1)
 
-                            dup = torch.cat((sim_close, pgt_index[idx][pos_c])).unique()[torch.where(torch.cat((sim_close, pgt_index[idx][pos_c])).unique(return_counts=True)[1]>1)]
-                            sim_close = torch.cat((sim_close,dup)).unique()[torch.where(torch.cat((sim_close,dup)).unique(return_counts=True)[1]==1)]
-                            sim_close = torch.cat((sim_close, max_index.view(-1))) if sim_close.nelement() == 0 else sim_close
+                        sim_close = easy_nms(proposals_per_image, sim_close, proposal_score[:,pos_c], nms_iou=self.nms)      ### operate nms
+                        sim_close = torch.cat((sim_close, max_index.view(-1))) if sim_close.nelement() == 0 else sim_close   ### avoid none
+                        pgt_instance[idx][i][pos_c] = torch.cat((pgt_instance[idx][i][pos_c], sim_close))
 
-                            #'''
-                            pgt_update[pos_c] = torch.cat((pgt_update[pos_c], sim_feature[idx][sim_close]))
-                            pgt_index[idx][pos_c] = torch.cat((pgt_index[idx][pos_c], sim_close)).unique()
+                        dup = torch.cat((sim_close, pgt_index[idx][pos_c])).unique()[torch.where(torch.cat((sim_close, pgt_index[idx][pos_c])).unique(return_counts=True)[1]>1)]
+                        sim_close = torch.cat((sim_close,dup)).unique()[torch.where(torch.cat((sim_close,dup)).unique(return_counts=True)[1]==1)]
+                        sim_close = torch.cat((sim_close, max_index.view(-1))) if sim_close.nelement() == 0 else sim_close
 
-                            if iteration['iter'] < 0:
-                                sim_hardness = torch.ones_like(sim_close) * 0.00001
-                            else:
-                                sim_hardness = final_score_list[idx][sim_close, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
-                                #sim_hardness = avg_score_split[idx][sim_close, pos_c+1]
-                                #sim_hardness = avg_score_split[idx][sim_close, pos_c+1] / avg_score_split[idx][:, pos_c+1].sum()
-                                #sim_hardness = F.softmax(avg_score_split[idx][:, pos_c+1], dim=0)[iou_samples]
-                                #sim_hardness = (avg_score_split[idx][:, pos_c+1] / torch.matmul(avg_score_split[idx][:,pos_c+1], (1-boxlist_iou(proposals_per_image, proposals_per_image))))[sim_close]
+                        pgt_update[pos_c] = torch.cat((pgt_update[pos_c], sim_feature[idx][sim_close]))
+                        pgt_index[idx][pos_c] = torch.cat((pgt_index[idx][pos_c], sim_close)).unique()
 
-                                #alpha = (iteration['iter']/30000) ** (2)
-                                #sim_hardness = torch.ones_like(sim_close) * 0.1
-                            instance_diff = torch.cat((instance_diff, sim_hardness.view(-1)))
-                                #'''
-
-                            ##### add iou samples from pgt ###
-                            '''
-                            sim_close = cal_iou(proposals_per_image, sim_close, self.p_thres)[0]
-                            pgt_update[pos_c] = torch.cat((pgt_update[pos_c], sim_feature[idx][sim_close]))
-                            pgt_index[idx][pos_c] = torch.cat((pgt_index[idx][pos_c], sim_close)).unique()
-                            sim_hardness = final_score_list[idx][sim_close, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
-                            instance_diff = torch.cat((instance_diff, sim_hardness.view(-1)))
-
-                            sim_drop_logit = feature_extractor.forward_neck(feature_extractor.drop_pool(clean_pooled_feat[idx][sim_close]))
-                            pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(sim_drop_logit) ))
-                            #sim_drop_hardness = torch.softmax(torch.stack(predictor.forward_ref(sim_drop_logit)),2).mean(0)[:,pos_c+1]
-                            instance_diff = torch.cat((instance_diff, sim_hardness))
-
-                            sim_noise_logit = feature_extractor.forward_neck(feature_extractor.noise_pool(clean_pooled_feat[idx][sim_close]))
-                            pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(sim_noise_logit) ))
-                            #sim_noise_hardness = torch.softmax(torch.stack(predictor.forward_ref(sim_noise_logit)),2).mean(0)[:,pos_c+1]
-                            instance_diff = torch.cat((instance_diff, sim_hardness))
-                            '''
-                            ### cal recall-precision ###
-                            #if num_classes == 21:
-                            #    target = targets[idx][torch.where(targets[idx].get_field('labels') == pos_c+1)[0]]
-                            #    iter_dict = cal_precision_recall(proposals_per_image, max_index, sim_close, pos_c, target, iter_dict, sim_thresh)
-                            ### cal recall-precision ###
-
-            ### save precision-recall ###
-            #if iter_dict['iter'] % 100 == 0:
-            #    f = open(os.path.join(self.output_dir, "stats.txt"), 'a')
-            #    f.write(str(iter_dict) + "\n")
-            ### cal recall-precision and save ###
+                        sim_hardness = final_score_list[idx][sim_close, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
+                        instance_diff = torch.cat((instance_diff, sim_hardness.view(-1)))
 
             return_loss_dict['loss_sim'] = self.sim_lmda * self.sim_loss(pgt_update, instance_diff, device)
 
@@ -438,15 +358,11 @@ class RoIRegLossComputation(object):
                         )
                 elif not self.contra and self.refine_p > 0:          ### mist layer ###
                     pseudo_labels, loss_weights, regression_targets = self.mist_layer(
-                        proposals_per_image, source_score, labels_per_im, device, targets_per_im, iter_dict, self.output_dir, return_targets=True
+                        proposals_per_image, source_score, labels_per_im, device, return_targets=True
                         )
-                elif self.contra and self.refine_p == 0:                ### sim layer ###
-                    pseudo_labels, loss_weights, regression_targets = self.sim_layer(
+                elif self.contra and self.refine_p == 0:                ### od layer ###
+                    pseudo_labels, loss_weights, regression_targets = self.od_layer(
                     proposals_per_image, source_score, labels_per_im, device, pgt_instance[idx][i], return_targets=True
-                    )
-                elif self.contra and self.refine_p > 0:
-                    pseudo_labels, loss_weights, regression_targets = self.mist_cbs_layer(
-                        proposals_per_image, source_score, labels_per_im, device, pgt_instance[idx][i], return_targets=True
                     )
                 if self.roi_refine:
                     pseudo_labels = self.filter_pseudo_labels(pseudo_labels, proposals_per_image, targets_per_im)
@@ -485,21 +401,10 @@ class RoIRegLossComputation(object):
             if 'sim' in l:
                 continue
             return_loss_dict[l] /= len(final_score_list)
+
         for a in return_acc_dict.keys():
             return_acc_dict[a] /= len(final_score_list)
 
-        #for l, a in zip(return_loss_dict.keys(), return_acc_dict.keys()):
-        #    return_loss_dict[l] /= len(final_score_list)
-        #    return_acc_dict[a] /= len(final_score_list)
-
-        ### loss_weight ###
-        #for keys in return_loss_dict.keys():
-        #    if 'cls' in keys:
-        #        return_loss_dict[keys] *= self.cls_hp
-        #    if 'reg' in keys:
-        #        return_loss_dict[keys] *= self.reg_hp
-
-        ### loss_weight ###
         return return_loss_dict, return_acc_dict
 
 

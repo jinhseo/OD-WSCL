@@ -6,9 +6,9 @@ import numpy as np
 from torch import nn
 
 from wetectron.structures.bounding_box import BoxList
-from wetectron.structures.boxlist_ops import boxlist_nms, boxlist_iou, cat_boxlist, remove_inside_box, remove_small_boxes, remove_inside_boxlist
+from wetectron.structures.boxlist_ops import boxlist_nms, boxlist_iou, cat_boxlist, remove_small_boxes
 from wetectron.modeling.box_coder import BoxCoder
-from wetectron.utils.utils import clustering, to_boxlist, cal_iou
+from wetectron.utils.utils import to_boxlist, cal_iou
 
 class PostProcessor(nn.Module):
     """

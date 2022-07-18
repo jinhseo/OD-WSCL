@@ -8,7 +8,7 @@ from wetectron.modeling.backbone import resnet
 from wetectron.modeling.poolers import Pooler
 from wetectron.modeling.make_layers import group_norm
 from wetectron.modeling.make_layers import make_fc
-from wetectron.modeling.dropblock.drop_block import DropBlock2D, Attention_DropBlock
+from wetectron.modeling.dropblock.drop_block import DropBlock2D
 
 @registry.ROI_BOX_FEATURE_EXTRACTORS.register("ResNet50Conv5ROIFeatureExtractor")
 class ResNet50Conv5ROIFeatureExtractor(nn.Module):

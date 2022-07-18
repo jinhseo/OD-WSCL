@@ -13,7 +13,7 @@ import torchvision.models as models
 
 from wetectron.modeling import registry
 from wetectron.modeling.poolers import Pooler
-from wetectron.modeling.dropblock.drop_block import DropBlock2D, DropBlock3D, Attention_DropBlock
+from wetectron.modeling.dropblock.drop_block import DropBlock2D
 
 # to auto-load imagenet pre-trainied weights
 class Identity(nn.Module):
@@ -158,12 +158,9 @@ class VGG16FC67ROIFeatureExtractor(nn.Module):
         x = self.classifier(x)
         return x
 
-    ### add original dropblock ###
-    def forward_dropblock(self, pooled_feats):
-        #pooled_feat = self.pooler(x, proposals)
+    ### original dropblock ###
+    def forward_dropblock(self, pooled_feats, proposals):
         db_pooled_feat = self.dropblock(pooled_feats)
-        #x = db_pooled_feat.view(db_pooled_feat.shape[0], -1)
-        #x = self.classifier(x)
         return db_pooled_feat
 
     def drop_pool(self, pooled_feats):
@@ -171,29 +168,18 @@ class VGG16FC67ROIFeatureExtractor(nn.Module):
         return db_pooled_feats
 
     def noise_pool(self, pooled_feats):
-        #noise = torch.normal(0, math.sqrt(0.1), size=pooled_feats.shape, device=pooled_feats[0].device)
         noise = torch.normal(0, 1**2, size=pooled_feats.shape, device=pooled_feats[0].device)
-        #std, mean = torch.std_mean(pooled_feats)
-        #noise = torch.normal(mean.item(), std.item(), size=pooled_feats.shape, device=pooled_feats[0].device)
-
         noise_pooled_feats = noise * pooled_feats + pooled_feats
         return noise_pooled_feats
 
     def content_pool(self, pooled_feats):
         size = pooled_feats.size()
         N, C = size[:2]
-
         instance_std, instance_mean = torch.std_mean(pooled_feats.view(N,C,-1), dim=2)
         instance_std = instance_std.view(N,C,1,1).expand(size)
         instance_mean = instance_mean.view(N,C,1,1).expand(size)
         content_feat = (pooled_feats - instance_mean) / instance_std
         return content_feat
-        #content_logit = feature_extractor.forward_neck(content_feat)
-        #pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(content_logit) ))
-        #sim_content_hardness = torch.softmax(torch.stack(predictor.forward_ref(content_logit)),2).mean(0)[:,pos_c+1]
-        #instance_diff = torch.cat((instance_diff, sim_content_hardness))
-        #import IPython; IPython.embed()
-        #return content_pooled_feats
 
     def flip_pool(self, pooled_feats):
         flip_pooled_feats = torch.flip(pooled_feats, (3,))
