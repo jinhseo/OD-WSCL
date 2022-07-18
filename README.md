@@ -51,7 +51,7 @@ mkdir -p datasets/{coco/voc}
     ├── ...
 ```
 ## Proposal:
-Download .pkl file from [Dropbox](https://www.dropbox.com/sh/twfxmipuljvyxng/AABomkOHkurFqWAdRpTzrYIAa?dl=0)
+Download .pkl file from [Dropbox](https://www.dropbox.com/sh/sprm4dxg7l22jrg/AAD0kBctuRnCg_rlZHzEBemQa?dl=0)
 ```bash
 mkdir proposal
     proposal/
