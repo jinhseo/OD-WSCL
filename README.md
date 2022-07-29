@@ -3,15 +3,20 @@
 </div><div align="center">
   <h3>Jinhwan Seo, Wonho Bae, Danica J. Sutherland, Junhyug Noh, and Daijin Kim</h3>
 </div>
+</div><div align="center">
+  <h3><a href="https://github.com/jinhseo/OD-WSCL">[Paper]</a>, <a href="https://jinhseo.github.io/research/wsod.html">[Project page]</a></h3>
+</div>
 <br /><div align="center">
-  <img src="./teaser.png" alt="result" width="600"/>
-</div>The official implementation of ECCV2022 paper: "Object Discovery via Contrastive Learning for Weakly Supervised Object Detection
+  <img src="./teaser2.png" alt="result" width="900"/>
+</div>
+The official implementation of ECCV2022 paper: "Object Discovery via Contrastive Learning for Weakly Supervised Object Detection"
+
 
 ## Environment setup:
 
 * [Python 3.7](https://pytorch.org)
 * [CUDA 11.0](https://developer.nvidia.com/cuda-toolkit)
-* [PyTorch 1.7.0](https://pytorch.org)
+* [PyTorch 1.7.1](https://pytorch.org)
 ```bash
 git clone https://github.com/jinhseo/OD-WSCL/
 cd OD-WSCL
@@ -30,8 +35,7 @@ python setup.py build develop
 ```
 ## Dataset:
 * [PASCAL VOC (2007, 2012)](http://host.robots.ox.ac.uk/pascal/VOC/)
-* [MS-COCO (2014, 2017)](https://cocodataset.org/#download)
-Download it and create symlink to datasets/{coco/voc}/
+* [MS-COCO (2014, 2017)](https://cocodataset.org/#download)  
 ```bash
 mkdir -p datasets/{coco/voc}
     datasets/
