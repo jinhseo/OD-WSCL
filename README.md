@@ -88,7 +88,7 @@ ex) python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node=1 
 ```BibTex
 @inproceedings{seo2022od-wscl,
  author    = {Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J. and Noh, Junhyug and Kim, Daijin},
- title = {Object Discovery via Contrastive Learning for Weakly Supervised Object Detection},
+ title = {{Object Discovery via Contrastive Learning for Weakly Supervised Object Detection}},
  booktitle = {European Conference on Computer Vision (ECCV)},
  year = {2022}
 }
