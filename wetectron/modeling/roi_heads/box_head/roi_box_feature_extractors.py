@@ -99,7 +99,7 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
         return x
 
     ### add original dropblock ###
-    def forward_dropblock(self, pooled_feat):
+    def forward_dropblock(self, pooled_feat, proposals):
         db_pooled_feat = self.dropblock(pooled_feat)
         #x = db_pooled_feat.view(db_pooled_feat.shape[0], -1)
         #x = self.classifier(x)
@@ -207,7 +207,7 @@ class ResNet101Conv5ROIFeatureExtractor(nn.Module):
         return x
 
     ### add original dropblock ###
-    def forward_dropblock(self, pooled_feat):
+    def forward_dropblock(self, pooled_feat, proposals):
         #pooled_feat = self.pooler(x, proposals)
         db_pooled_feat = self.dropblock(pooled_feat)
         #x = db_pooled_feat.view(db_pooled_feat.shape[0], -1)

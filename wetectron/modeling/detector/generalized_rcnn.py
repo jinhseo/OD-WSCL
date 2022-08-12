@@ -34,7 +34,6 @@ class GeneralizedRCNN(nn.Module):
         super(GeneralizedRCNN, self).__init__()
         self.backbone = build_backbone(cfg)
         ### adjust stride for R50-C5 combination###
-
         if 'R-50-C5' in cfg.MODEL.BACKBONE['CONV_BODY']:
             self.backbone[0].layer4[0].downsample[0].stride = (1,1)
             self.backbone[0].layer4[0].conv1.stride = (1,1)

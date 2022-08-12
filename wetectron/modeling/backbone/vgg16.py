@@ -13,7 +13,7 @@ import torchvision.models as models
 
 from wetectron.modeling import registry
 from wetectron.modeling.poolers import Pooler
-from wetectron.modeling.dropblock.drop_block import DropBlock2D
+from wetectron.modeling.dropblock.drop_block import DropBlock2D, Attention_DropBlock
 
 # to auto-load imagenet pre-trainied weights
 class Identity(nn.Module):
@@ -132,6 +132,8 @@ class VGG16FC67ROIFeatureExtractor(nn.Module):
 
         if config.DB.METHOD == 'dropblock':
             self.dropblock = DropBlock2D(block_size=3, drop_prob=0.3)
+        elif config.DB.METHOD == 'attention':
+            self.dropblock = Attention_DropBlock(block_size=3, drop_prob=0.3)
         self.sim_drop = DropBlock2D(block_size=1, drop_prob=0.3)
 
         if init_weights:
@@ -147,6 +149,7 @@ class VGG16FC67ROIFeatureExtractor(nn.Module):
         pooled_feat = self.pooler(x, proposals)
         x = pooled_feat.view(pooled_feat.shape[0], -1)
         x = self.classifier(x)
+        #x = pooled_feat.mean(3).mean(2)
         return x, pooled_feat
 
     def forward_pooler(self, x, proposals):
@@ -161,6 +164,10 @@ class VGG16FC67ROIFeatureExtractor(nn.Module):
     ### original dropblock ###
     def forward_dropblock(self, pooled_feats, proposals):
         db_pooled_feat = self.dropblock(pooled_feats)
+        return db_pooled_feat
+
+    def forward_attention_dropblock(self, pooled_feats, proposals):
+        db_pooled_feat = self.dropblock(pooled_feats, proposals)
         return db_pooled_feat
 
     def drop_pool(self, pooled_feats):

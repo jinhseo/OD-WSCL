@@ -93,6 +93,8 @@ class ROIWeakRegHead(torch.nn.Module):
             return self.feature_extractor.forward_neck(x), pooled_feats
         elif self.DB_METHOD == "dropblock":
             return self.feature_extractor.forward_dropblock(features, proposals)
+        elif self.DB_METHOD == "attention":
+            return self.feature_extractor.forward_attention_dropblock(features, proposals)
         else:
             raise ValueError
 
@@ -106,10 +108,8 @@ class ROIWeakRegHead(torch.nn.Module):
 
         if self.training:
             sim_feature = self.model_sim(clean_roi_feats)
-            #aug_pooled_feats = self.feature_extractor.forward_dropblock(clean_pooled_feats)
             aug_pooled_feats = self.go_through_cdb(clean_pooled_feats, proposals, model_cdb=model_cdb)
             aug_roi_feats = self.feature_extractor.forward_neck(aug_pooled_feats)
-
             cls_score, det_score, ref_scores, ref_bbox_preds = self.predictor(aug_roi_feats, proposals)
 
         if not self.training:

@@ -252,7 +252,7 @@ class RoIRegLossComputation(object):
         ref_score = ref_scores.copy()
         for r, r_score in enumerate(ref_scores):
             ref_score[r] = F.softmax(r_score, dim=1)
-        avg_score = torch.stack(ref_score).mean(0)
+        avg_score = torch.stack(ref_score).mean(0).detach()
         avg_score_split = avg_score.split([len(p) for p in proposals])
 
         ref_scores = [rs.split([len(p) for p in proposals]) for rs in ref_scores]
@@ -292,10 +292,12 @@ class RoIRegLossComputation(object):
                     pgt_update[pos_c] = torch.cat((pgt_update[pos_c], sim_feature[idx][iou_samples])) ### iou sampling
 
                     hardness = final_score_list[idx][iou_samples, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
+                    #hardness = avg_score_split[idx][iou_samples, pos_c+1] / avg_score_split[idx][:, pos_c+1].sum()
 
                     instance_diff = torch.cat((instance_diff, hardness))
                     drop_logit = feature_extractor.forward_neck(feature_extractor.drop_pool(clean_pooled_feat[idx][iou_samples]))
                     pgt_update[pos_c] = torch.cat((pgt_update[pos_c], model_sim(drop_logit) ))
+
                     instance_diff = torch.cat((instance_diff, hardness))
 
                     noise_logit = feature_extractor.forward_neck(feature_extractor.noise_pool(clean_pooled_feat[idx][iou_samples]))
@@ -339,6 +341,7 @@ class RoIRegLossComputation(object):
                         pgt_index[idx][pos_c] = torch.cat((pgt_index[idx][pos_c], sim_close)).unique()
 
                         sim_hardness = final_score_list[idx][sim_close, pos_c+1] / final_score_list[idx][:,pos_c+1].sum()
+                        #sim_hardness = avg_score_split[idx][sim_close, pos_c+1] / avg_score_split[idx][:, pos_c+1].sum()
                         instance_diff = torch.cat((instance_diff, sim_hardness.view(-1)))
 
             return_loss_dict['loss_sim'] = self.sim_lmda * self.sim_loss(pgt_update, instance_diff, device)
