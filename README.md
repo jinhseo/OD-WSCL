@@ -7,7 +7,7 @@
   <h3><a href="https://github.com/jinhseo/OD-WSCL">[Paper]</a>, <a href="https://jinhseo.github.io/research/wsod.html">[Project page]</a></h3>
 </div>
 <br /><div align="center">
-  <img src="./teaser2.png" alt="result" width="900"/>
+  <img src="./teaser.png" alt="result" width="900"/>
 </div>
 The official implementation of ECCV2022 paper: "Object Discovery via Contrastive Learning for Weakly Supervised Object Detection"
 
@@ -84,6 +84,7 @@ The hyperparameter settings may vary with multiple small GPUs, and results will 
 python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node={NO_GPU} tools/test_net.py --config-file "configs/{config_file}.yaml" TEST.IMS_PER_BATCH 8 OUTPUT_DIR {output_dir} MODEL.WEIGHT {model_weight}.pth
 ex) python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node=1 tools/test_net.py --config-file "configs/voc07_contra_db_b8_lr0.01.yaml" TEST.IMS_PER_BATCH 8 OUTPUT_DIR OD-WSCL/output MODEL.WEIGHT OD-WSCL/output/model_final.pth
 ```
+## BibTex:
 ```BibTex
 @inproceedings{seo2022od-wscl,
  author    = {Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J. and Noh, Junhyug and Kim, Daijin},
