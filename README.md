@@ -74,17 +74,43 @@ mkdir proposal
 ```
 ## Train:
 ```bash
-python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node={NO_GPU} tools/train_net.py --config-file "configs/{config_file}.yaml" OUTPUT_DIR {output_dir}
-ex) python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node=1 tools/train_net.py --config-file "configs/voc07_contra_db_b8_lr0.01.yaml" OUTPUT_DIR OD-WSCL/output nms 0.1 lmda 0.03 iou 0.5 temp 0.2 loss supconv2
+python -m torch.distributed.launch --nproc_per_node={NO_GPU} tools/train_net.py  
+                                   --config-file "configs/{config_file}.yaml"
+                                   OUTPUT_DIR {output_dir}
+                                   nms {nms threshold}
+                                   lmda {lambda value}
+                                   iou {iou threshold}
+                                   temp {temperature}
+```
+Example:
+```bash
+python -m torch.distributed.launch --nproc_per_node=1 tools/train_net.py 
+                                   --config-file "configs/voc07_contra_db_b8_lr0.01_mcg.yaml" 
+                                   OUTPUT_DIR OD-WSCL/output 
+                                   nms 0.1 
+                                   lmda 0.03 
+                                   iou 0.5
+                                   temp 0.2
 ```
 Note: We trained our model on a single large-memory GPU (<em>e.g.</em>, A100 40GB) to maintain large mini-batch size for the best performance.  
 The hyperparameter settings may vary with multiple small GPUs, and results will be provided later.
 ## Eval:
 ```bash
-python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node={NO_GPU} tools/test_net.py --config-file "configs/{config_file}.yaml" TEST.IMS_PER_BATCH 8 OUTPUT_DIR {output_dir} MODEL.WEIGHT {model_weight}.pth
-ex) python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node=1 tools/test_net.py --config-file "configs/voc07_contra_db_b8_lr0.01.yaml" TEST.IMS_PER_BATCH 8 OUTPUT_DIR OD-WSCL/output MODEL.WEIGHT OD-WSCL/output/model_final.pth
+python -m torch.distributed.launch --nproc_per_node={NO_GPU} tools/test_net.py
+                                   --config-file "configs/{config_file}.yaml" 
+                                   TEST.IMS_PER_BATCH 8 
+                                   OUTPUT_DIR {output_dir} 
+                                   MODEL.WEIGHT {model_weight}.pth
 ```
-## BibTex:
+Example:
+```bash
+python -m torch.distributed.launch --nproc_per_node=1 tools/test_net.py 
+                                   --config-file "configs/voc07_contra_db_b8_lr0.01.yaml" 
+                                   TEST.IMS_PER_BATCH 8 
+                                   OUTPUT_DIR OD-WSCL/output 
+                                   MODEL.WEIGHT OD-WSCL/output/model_final.pth
+```
+## Citation:
 ```BibTex
 @inproceedings{seo2022od-wscl,
  author    = {Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J. and Noh, Junhyug and Kim, Daijin},
@@ -93,3 +119,7 @@ ex) python -m torch.distributed.launch --master_port=$RANDOM --nproc_per_node=1 
  year = {2022}
 }
 ```
+
+## Acknowledgement:
+We borrowed the main code from <a href="https://github.com/NVlabs/wetectron">wetectron</a>. Thank you for sharing your great work!
+
