@@ -111,6 +111,7 @@ python -m torch.distributed.launch --nproc_per_node=1 tools/test_net.py
                                    MODEL.WEIGHT OD-WSCL/output/model_final.pth
 ```
 ## Citation:
+If you find helpful our work in your research, please consider cite this: 
 ```BibTex
 @inproceedings{seo2022od-wscl,
  author    = {Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J. and Noh, Junhyug and Kim, Daijin},
@@ -119,7 +120,6 @@ python -m torch.distributed.launch --nproc_per_node=1 tools/test_net.py
  year = {2022}
 }
 ```
-
 ## Acknowledgement:
 We borrowed the main code from <a href="https://github.com/NVlabs/wetectron">wetectron</a>. Thank you for sharing your great work!
 
