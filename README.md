@@ -9,9 +9,13 @@
 <br /><div align="center">
   <img src="./teaser.png" alt="result" width="900"/>
 </div>
-The official implementation of ECCV2022 paper: "Object Discovery via Contrastive Learning for Weakly Supervised Object Detection"
 
+The official implementation of ECCV2022 paper: "Object Discovery via Contrastive Learning for Weakly Supervised Object Detection"  
 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/object-discovery-via-contrastive-learning-for/weakly-supervised-object-detection-on-ms-coco)](https://paperswithcode.com/sota/weakly-supervised-object-detection-on-ms-coco?p=object-discovery-via-contrastive-learning-for)  
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/object-discovery-via-contrastive-learning-for/weakly-supervised-object-detection-on-ms-coco-1)](https://paperswithcode.com/sota/weakly-supervised-object-detection-on-ms-coco-1?p=object-discovery-via-contrastive-learning-for)  
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/object-discovery-via-contrastive-learning-for/weakly-supervised-object-detection-on-pascal)](https://paperswithcode.com/sota/weakly-supervised-object-detection-on-pascal?p=object-discovery-via-contrastive-learning-for)  
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/object-discovery-via-contrastive-learning-for/weakly-supervised-object-detection-on-pascal-1)](https://paperswithcode.com/sota/weakly-supervised-object-detection-on-pascal-1?p=object-discovery-via-contrastive-learning-for)
 ## Environment setup:
 
 * [Python 3.7](https://pytorch.org)
@@ -105,7 +109,7 @@ python -m torch.distributed.launch --nproc_per_node={NO_GPU} tools/test_net.py
 Example:
 ```bash
 python -m torch.distributed.launch --nproc_per_node=1 tools/test_net.py 
-                                   --config-file "configs/voc07_contra_db_b8_lr0.01.yaml" 
+                                   --config-file "configs/voc07_contra_db_b8_lr0.01_mcg.yaml" 
                                    TEST.IMS_PER_BATCH 8 
                                    OUTPUT_DIR OD-WSCL/output 
                                    MODEL.WEIGHT OD-WSCL/output/model_final.pth
