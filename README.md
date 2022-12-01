@@ -124,6 +124,15 @@ If you find helpful our work in your research, please consider cite this:
  year = {2022}
 }
 ```
+We borrowed the main code from <a href="https://github.com/NVlabs/wetectron">wetectron</a>, please consider cite it as well.  
+Thank you for sharing your great work!  
+```BibTex
+@inproceedings{ren-cvpr020,
+  title = {Instance-aware, Context-focused, and Memory-efficient Weakly Supervised Object Detection},
+  author = {Zhongzheng Ren and Zhiding Yu and Xiaodong Yang and Ming-Yu Liu and Yong Jae Lee and Alexander G. Schwing and Jan Kautz},
+  booktitle = {IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year = {2020}
+}
+```
 ## Acknowledgement:
-We borrowed the main code from <a href="https://github.com/NVlabs/wetectron">wetectron</a>. Thank you for sharing your great work!
-
+This work was supported by Institute of Information & communications Technology Planning & Evaluation(IITP) grant funded by the Korea government(MSIT) (No.2017-0-00897, Development of Object Detection and Recognition for Intelligent Vehicles)
