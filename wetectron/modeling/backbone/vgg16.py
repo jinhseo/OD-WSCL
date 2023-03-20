@@ -13,7 +13,7 @@ import torchvision.models as models
 
 from wetectron.modeling import registry
 from wetectron.modeling.poolers import Pooler
-from wetectron.modeling.dropblock.drop_block import DropBlock2D, Attention_DropBlock
+from wetectron.modeling.dropblock.drop_block import DropBlock2D
 
 # to auto-load imagenet pre-trainied weights
 class Identity(nn.Module):
