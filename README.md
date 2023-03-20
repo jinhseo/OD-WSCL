@@ -31,7 +31,7 @@ conda activate OD-WSCL
 pip install ninja yacs cython matplotlib tqdm opencv-python tensorboardX pycocotools
 conda install pytorch==1.7.1 torchvision==0.8.2 cudatoolkit=11.0 -c pytorch
 
-git clone https://github.com/NVIDIA/apex.git
+git clone --branch 22.04-dev https://github.com/NVIDIA/apex.git
 cd apex
 pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
 cd ../
