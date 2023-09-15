@@ -117,11 +117,13 @@ python -m torch.distributed.launch --nproc_per_node=1 tools/test_net.py
 ## Citation:
 If you find helpful our work in your research, please consider cite this: 
 ```BibTex
-@inproceedings{seo2022od-wscl,
- author    = {Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J. and Noh, Junhyug and Kim, Daijin},
- title = {{Object Discovery via Contrastive Learning for Weakly Supervised Object Detection}},
- booktitle = {European Conference on Computer Vision (ECCV)},
- year = {2022}
+@inproceedings{seo2022object,
+  title={Object discovery via contrastive learning for weakly supervised object detection},
+  author={Seo, Jinhwan and Bae, Wonho and Sutherland, Danica J and Noh, Junhyug and Kim, Daijin},
+  booktitle={European Conference on Computer Vision},
+  pages={312--329},
+  year={2022},
+  organization={Springer}
 }
 ```
 We borrowed the main code from <a href="https://github.com/NVlabs/wetectron">wetectron</a>, please consider cite it as well.  
