@@ -24,8 +24,8 @@ DATASETS:
   TRAIN: ("coco_2014_train", "coco_2014_valminusminival")
   TEST:  ("coco_2014_minival",)
 PROPOSAL_FILES:
-  TRAIN: ('proposal/MCG/coco/MCG-coco_2014_train_boxes.pkl','proposal/MCG/coco/MCG-coco_2014_valminusminival_boxes.pkl')
-  TEST:  ('proposal/MCG/coco/MCG-coco_2014_minival_boxes.pkl',)
+  TRAIN: ('proposal/MCG/coco/MCG-coco14_train.pkl','proposal/MCG/coco/MCG-coco14_valminusminival.pkl')
+  TEST:  ('proposal/MCG/coco/MCG-coco14_minival.pkl',)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 INPUT:
