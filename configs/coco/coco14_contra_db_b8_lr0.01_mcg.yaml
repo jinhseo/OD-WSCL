@@ -24,8 +24,8 @@ DATASETS:
   TRAIN: ("coco_2014_train",)
   TEST: ("coco_2014_val",)
 PROPOSAL_FILES:
-  TRAIN: ('proposal/MCG/coco/MCG-coco_2014_train-boxes.pkl',)
-  TEST:  ('proposal/MCG/coco/MCG-coco_2014_val-boxes.pkl',)
+  TRAIN: ('proposal/MCG/coco/MCG-coco14_train.pkl',)
+  TEST:  ('proposal/MCG/coco/MCG-coco14_val.pkl',)
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 INPUT:
@@ -37,8 +37,8 @@ SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.01
   WEIGHT_DECAY: 0.0001
-  STEPS: (22500, 30000)
-  MAX_ITER: 32500
+  STEPS: (90000, 120000)
+  MAX_ITER: 130000
   CHECKPOINT_PERIOD: 5000
   CONTRA: True
 TEST:
